@@ -1,0 +1,1 @@
+{"templateId":"05849e34-7c47-4cbb-9c07-82a8dd14dbe1","fileName":"epiphyte-json-schema.hbs","templateName":"Epiphyte JSON Schema","templateDescription":"Generates JSON schemas ","defaultFileSuffix":"json","singleFileOutput":false,"platforms":["MONGODB","ALL","MONGOOSE"],"syntaxHighlightingLanguage":"javascript","beautify":true,"default":true,"templateIsActiveByDefault":true}

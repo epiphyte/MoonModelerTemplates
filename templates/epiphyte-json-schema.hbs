@@ -1,0 +1,250 @@
+{{! Main template }}
+{{#if selectedObjectOnly}}  
+  {{! Section for selected object only}}
+  {{~#with (lookup mainObjects selectedObjectId) as |mainObject|}}     
+    {{~> collectionDetail collectionObject=mainObject otherObjects=../otherObjects collections=../mainObjects fieldIsArray=false }}
+  {{/with}}
+
+  {{~#with (lookup otherObjects selectedObjectId) as |otherObject|}}      
+    {{~> otherObjectDetail otherObject=otherObject }} 
+  {{/with}} 
+
+  {{~#with (lookup links selectedObjectId) as |linkObject|}}      
+    {{~> linkObjectDetail linkObject=linkObject }}   
+  {{/with}} 
+
+  {{~#with (lookup lines selectedObjectId) as |lineObject|}}      
+    {{~> lineObjectDetail lineObject=lineObject }} 
+  {{/with}} 
+
+  {{! End of Section for selected object only}}
+{{~else~}} 
+  {{! Section for all objects}}
+  {{! Iterate activeDiagramMainObjects = Collections. In the internal structure, collections are objects with property "embeddable" set to false}}
+  {{#with (filterObjectByProperty activeDiagramMainObjects "embeddable" false) as |filteredCollections|}}  
+    {{#each filteredCollections as |collectionObject|}}
+      {{#ifAny collectionObject.generate (ifAllInline (eq collectionObject.generateCustomCode true) (ne collectionObject.customCode "")) }}
+        {{! New file with default suffix}}
+        {{#newFile collectionObject.name}}
+{{> collectionDetail otherObjects=../../otherObjects collectionObject=collectionObject collections=../../mainObjects fieldIsArray=false }}
+        {{/newFile}}
+      {{/ifAny}}
+    {{/each}}
+  {{/with}}
+
+  {{! Iterate activeDiagramOtherObjects = Function, View, DatatypeAlias, Other}} 
+  {{~#each activeDiagramOtherObjects as |otherObject|~}}
+    {{~#ifAll (eq otherObject.generate true) (ne otherObject.code "") ~}}
+      {{! New file with default suffix}} 
+      {{~#newFile otherObject.name~}}
+{{~> otherObjectDetail otherObject=otherObject ~}}
+      {{~/newFile~}}
+    {{~/ifAll~}}
+  {{~/each~}}
+
+  {{! Iterate activeDiagramLinks = References}}
+  {{~#each activeDiagramLinks as |linkObject|}}
+    {{~#ifAll (eq linkObject.generateCustomCode true) (ne linkObject.customCode "") }} 
+      {{! New file with default suffix}} 
+      {{~#newFile linkObject.name}}
+        {{~> linkObjectDetail linkObject=linkObject }} 
+      {{~/newFile}}
+    {{~/ifAll}}
+  {{~/each}}
+
+  {{! Iterate activeDiagramLines}}
+  {{~#each activeDiagramLines as |lineObject|}}     
+    {{~#ifAll (eq lineObject.generate true) (ne lineObject.code "")}} 
+      {{! New file with default suffix}} 
+      {{~#newFile lineObject.name}}
+{{~> lineObjectDetail lineObject=lineObject }}
+      {{~/newFile}}
+    {{~/ifAll}}
+  {{~/each}}
+     
+  {{! New file with custom suffix}}
+  {{#newFileWithSuffix "readme" "txt"}}   
+Generated: {{timestamp}} by Moon Modeler - www.datensen.com
+  {{/newFileWithSuffix}}
+{{/if}}
+{{! End of Main template }}
+
+
+{{! collectionDetail partial inline template }}
+{{#*inline "collectionDetail"}}
+{{~#if collectionObject.generate}}
+{{~#isValueDefined collectionObject.beforeScript}}{{{collectionObject.beforeScript}}}{{newLine}}{{~/isValueDefined~}}
+{{#curlyBrackets}}
+    {{> collectionDefinition otherObjects=otherObjects collection=collectionObject collections=collections fieldIsArray=fieldIsArray}}
+    {{~newLine}}{{text "    "~}}
+{{~> collectionProperties collectionObject=collectionObject}}
+{{/curlyBrackets}}
+
+{{#isValueDefined collectionObject.afterScript~}}{{{collectionObject.afterScript}}}{{~newLine}}{{~/isValueDefined}}
+{{~/if}}
+{{~#if collectionObject.generateCustomCode}}
+{{#isValueDefined collectionObject.customCode}}{{{collectionObject.customCode}}}{{~newLine}}{{~/isValueDefined~}}
+{{~/if}}
+{{/inline}}
+
+{{! collectionProperties partial inline template }}
+{{#*inline "collectionProperties"}}
+{{~#isValueDefined collectionObject.capped}}{{~text ","}}
+  "capped": true{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.autoIndexId}}{{~text ","}}
+  "autoIndexId": true{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.size}}{{~text ","}}
+  "size": {{collectionObject.size}}{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.max}}{{~text ","}}
+  "max": {{collectionObject.max}}{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.validationLevel}}{{~text ","}}
+  "validationLevel":"{{collectionObject.validationLevel}}"{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.validationAction}}{{~text ","}}
+  "validationAction":"{{collectionObject.validationAction}}"{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.collation}}{{~text ","}} 
+  "collation":{{{collectionObject.collation}}}{{/isValueDefined}}
+  {{~#isValueDefined collectionObject.others}}{{~text ","}}
+  {{{collectionObject.others}}}{{/isValueDefined}}
+{{/inline}}
+
+{{! otherObjectDetail partial inline template }}
+{{#*inline "otherObjectDetail"}}
+{{~#if otherObject.generate}}
+{{~#isValueDefined otherObject.code}}{{{otherObject.code}}}{{newLine}}{{/isValueDefined}}
+{{~/if}}
+{{~#if otherObject.generateCustomCode}}
+{{~#isValueDefined otherObject.customCode}}{{{otherObject.customCode}}}{{newLine}}{{/isValueDefined}}
+{{~/if}}
+{{/inline}}
+
+{{! collectionDefinition - partial inline template }}
+{{#*inline "collectionDefinition"}}
+  {{~#if fieldIsArray}}
+  "bsonType": "array"{{text ","}}
+  "items": {{text "{"}}
+    {{>collectionBody collection=collection collections=collections~}}
+    {{~newLine}}{{text "  }"~}}
+  {{else}}
+  "bsonType": "object"{{text ","}}
+  {{>collectionBody collection=collection collections=collections }}
+  {{/if}}
+  {{#isValueDefined collection.validation}}{{~text ","}}
+  {{{collection.validation}}}
+  {{/isValueDefined}}
+{{/inline}}
+
+{{! collectionBody - partial inline template }}
+{{#*inline "collectionBody"}}
+"title": "{{collection.name}}"
+{{~#isValueDefined collection.desc}}{{~text ","}}
+"description": "{{{replaceSingleQuotation collection.desc}}}"
+{{~/isValueDefined}}
+  {{~#with (filterArrayByPropertyNotEqual collection.cols "name" "_id") as |filteredFields|~}} {{!skip _id fileds}}
+    {{~#with (filterArrayByProperty filteredFields "nn" true) as |requiredFields|}}
+{{~text ","}}
+"required": [{{~#each requiredFields as |requiredCol|}}{{~#if requiredCol.nn}}"{{requiredCol.name}}"{{~#unless @last}},{{text " "}}{{/unless}}{{/if}}{{/each}}]
+    {{~/with}}
+    {{~#with (filterArrayByProperty filteredFields "pattern" false) as |propertiesFields|~}}{{~text ","}}
+"properties": {{text "{"}}
+{{> propertiesDetails propertiesFields=propertiesFields collections=../../collections otherObjects=../../otherObjects}}
+{{text "}"}}
+    {{~/with}}
+    {{~#with (filterArrayByProperty filteredFields "pattern" true) as |patternPropertiesFields|~}}{{~text ","}}
+"patternProperties": {{text "{"}}
+{{> propertiesDetails propertiesFields=patternPropertiesFields collections=../../collections otherObjects=../../otherObjects}}
+{{text "}"}}
+    {{~/with}}
+  {{~/with}}
+{{/inline}}
+
+{{! propertiesDetails - partial inline template }}
+{{#*inline "propertiesDetails"}}
+  {{~#each propertiesFields as |field|}}
+  "{{field.name}}":{{text " {"}}
+  {{#if (lookup ../collections field.datatype)~}}
+  {{> collectionDefinition otherObjects=../otherObjects collections=../collections collection=(lookup ../collections field.datatype) fieldIsArray=field.list}}
+    {{> fieldValidation field=field}}
+    {{> fieldDescription field=field}}
+  {{else~}}
+    {{> fieldDefinition field=field otherObjects=../otherObjects~}}
+  {{~/if~}}{{~newLine~}}
+  {{text "  }"~}}
+  {{~#unless @last}}{{~text ","}}{{/unless}}
+  {{/each~}}
+{{/inline}}
+
+{{! fieldDefinition }}
+{{#*inline "fieldDefinition"}}
+{{#isTrue field.list}}
+"bsonType": "array"{{text ","}}
+"items": {{text "{"}}
+  {{> fieldDatatype field=field otherObjects=otherObjects}}
+  {{> fieldValidation field=field}}
+  {{> fieldDescription field=field}}
+{{newLine~}}
+{{text "}"~}}
+{{else~}}
+{{> fieldDatatype field=field otherObjects=otherObjects}}
+{{> fieldValidation field=field}}
+{{> fieldDescription field=field}}
+{{/isTrue}}
+{{/inline}}
+
+{{! fieldDatatype }}
+{{#*inline "fieldDatatype"}}
+{{~#isEqual field.datatype "enum"~}}
+"enum": {{{field.enum}}}
+{{~else~}}
+  {{~#isEqual field.datatype "any"~}}
+    {{~#isValueDefined field.any~}}
+"bsonType": [{{{field.any}}}]
+    {{~else~}}
+"bsonType": ["double", "string", "array", "binData", "undefined", "objectId", "bool", "date", "enum", "null", "regex", "dbPointer", "javascript", "symbol", "javascriptWithScope", "int", "timestamp", "long", "decimal", "minKey", "maxKey"]
+    {{~/isValueDefined~}}
+  {{~else~}}
+    {{~#if (lookup otherObjects field.datatype)~}}
+      {{~#with (lookup otherObjects field.datatype) as |customDatatypeAlias|~}}
+        {{~#isValueDefined customDatatypeAlias.typeExpression~}}
+{{{customDatatypeAlias.typeExpression}}}
+        {{~else~}}
+"bsonType": "{{customDatatypeAlias.name}}"
+        {{~/isValueDefined~}}
+      {{~/with}}
+    {{~else~}}
+"bsonType": "{{field.datatype}}"
+    {{~/if~}}
+  {{~/isEqual~}}
+{{~/isEqual~}}
+{{~/inline~}}
+
+{{! fieldValidation }}
+{{~#*inline "fieldValidation"~}}
+{{~#isValueDefined field.validation~}}{{~text ","}}
+{{{field.validation}}}
+{{~/isValueDefined~}}
+{{~/inline~}}
+
+{{! fieldDescription }}
+{{#*inline "fieldDescription"~}}
+{{~#isValueDefined field.comment}}{{~text ","}}
+"description":"{{{replaceSingleQuotation field.comment}}}"
+{{~/isValueDefined~}}
+{{~/inline~}}
+
+{{! lineObjectDetail }}
+{{#*inline "lineObjectDetail"}}
+  {{#if lineObject.generate}}
+    {{#isValueDefined lineObject.code~}}
+        {{{lineObject.code}}}
+    {{~/isValueDefined}}
+  {{/if}}
+{{/inline}}
+
+{{! linkObjectDetail }}
+{{#*inline "linkObjectDetail"}}
+  {{#if linkObject.generateCustomCode}}
+    {{#isValueDefined linkObject.customCode~}}
+    {{{linkObject.customCode}}}
+    {{~/isValueDefined}}
+  {{/if}} 
+{{/inline}}

@@ -75,6 +75,7 @@ Generated: {{timestamp}} by Moon Modeler - www.datensen.com
 {{~#if collectionObject.generate}}
 {{~#isValueDefined collectionObject.beforeScript}}{{{collectionObject.beforeScript}}}{{newLine}}{{~/isValueDefined~}}
 {{#curlyBrackets}}
+    "$schema": "http://json-schema.org/draft-07/schema#",
     {{> collectionDefinition otherObjects=otherObjects collection=collectionObject collections=collections fieldIsArray=fieldIsArray}}
     {{~newLine}}{{text "    "~}}
 {{~> collectionProperties collectionObject=collectionObject}}
